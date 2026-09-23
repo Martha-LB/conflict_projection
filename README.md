@@ -1,21 +1,5 @@
 # Conflict Projection
 
-This project is the modular version of `conflict_projection_with_qacc_7.ipynb`.
-The Python package contains the reusable implementation; the notebook only
-configures experiments and presents results.
-
-## What changed
-
-- Data loading, projection, prompts, methods, scoring, evaluation, and diagnostics
-  live in separate modules.
-- QACC defaults to the test split when a split field exists.
-- Exact match rejects extra predictions and never treats an empty gold set as correct.
-- MADAM-RAG aggregates the final round instead of returning a stale aggregation.
-- Domain parsing removes only the exact `www.` prefix.
-- QACC metadata and displayed weights are explicit experimental factors. A rank-only
-  comparison can therefore use exactly the same prompt and metadata exposure as BM25.
-- Every LLM response can be cached on disk and every evaluated item can be saved as
-  JSONL, allowing an interrupted experiment to be inspected and resumed safely.
 
 ## Layout
 
@@ -105,13 +89,3 @@ For a retrieval-only ablation, keep (2) and (3) disabled for both BM25 and the
 projected method. Test weight annotation and metadata exposure in separate rows.
 Do not describe a comparison as the “MaxEnt effect” when its prompt or visible
 metadata also changes.
-
-## Reproducibility notes
-
-- Record the dataset revision or QACC Git commit used for a final report.
-- Save raw responses and per-item scores under `outputs/`.
-- Use the same ordered instance IDs across paired methods.
-- Report a paired confidence interval or an exact McNemar test for method deltas.
-- The default projection threshold strategy is `prior_shift`, which requests a
-  small, individually feasible improvement from the prior. Use `legacy_mean` only
-  when reproducing the old notebook behavior.
