@@ -513,7 +513,20 @@ def load_qacc(path: Path, *, split: str | None = "test") -> list[Instance]:
                     supports_answer=None,
                 )
             )
-        gold = _clean_string(row.get("correctAnswer"))
+        raw_references = row.get("ambigqa_answer")
+        if isinstance(raw_references, list):
+            gold = [_clean_string(value) for value in raw_references if _clean_string(value)]
+        else:
+            reference = _clean_string(raw_references)
+            gold = [reference] if reference else []
+        # The official QACC evaluator scores against ``ambigqa_answer``.  The
+        # annotation field ``correctAnswer`` is not consistently an answer
+        # string (for example, it can contain a reason label such as
+        # "most common"), so it must not be the primary evaluation target.
+        if not gold:
+            fallback = _clean_string(row.get("firstAnswer") or row.get("correctAnswer"))
+            gold = [fallback] if fallback else []
+        gold = list(dict.fromkeys(gold))
         if not question or not documents or not gold:
             continue
 
@@ -526,11 +539,14 @@ def load_qacc(path: Path, *, split: str | None = "test") -> list[Instance]:
             Instance(
                 question=question,
                 documents=documents,
-                gold_answers=[gold],
+                gold_answers=gold,
                 has_conflict=has_conflict,
                 instance_id=row_id,
                 split=_clean_string(row.get("split")) or None,
-                metadata={"reason": _clean_string(row.get("reasons"))},
+                metadata={
+                    "reason": _clean_string(row.get("reasons")),
+                    "annotator_correct_answer": _clean_string(row.get("correctAnswer")),
+                },
             )
         )
     return instances

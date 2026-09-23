@@ -87,6 +87,24 @@ class DatasetUtilityTests(unittest.TestCase):
         self.assertTrue(instances[0].has_conflict)
         self.assertFalse(instances[1].has_conflict)
 
+    def test_qacc_uses_official_ambigqa_references_not_annotation_label(self):
+        rows = [{
+            "question": "Who created it?",
+            "contexts": ["The United Nations created it."],
+            "sources": ["https://example.com"],
+            "ambigqa_answer": ["United Nations", "the United Nations"],
+            "firstAnswer": "the United Nations",
+            "correctAnswer": "most common",
+            "secondAnswerExist": "B",
+            "split": "test",
+        }]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "qacc.json"
+            path.write_text(json.dumps(rows), encoding="utf-8")
+            instance = load_qacc(path, split="test")[0]
+        self.assertEqual(instance.gold_answers, ["United Nations", "the United Nations"])
+        self.assertEqual(instance.metadata["annotator_correct_answer"], "most common")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -94,6 +94,19 @@ def parse_answers(text: str) -> list[str]:
     return [part.strip().replace("<COMMA>", ",") for part in protected.split(",") if part.strip()]
 
 
+def parse_qacc_answer(text: str) -> list[str]:
+    """Parse QACC's single answer without splitting commas inside the answer."""
+    match = re.search(r"All Correct Answers:\s*\[(.*?)\]", text, re.IGNORECASE | re.DOTALL)
+    if match:
+        value = match.group(1).strip()
+    else:
+        fallback = re.search(r"(?:^|\n)Answer:\s*(.*?)(?:\n|$)", text, re.IGNORECASE)
+        value = fallback.group(1).strip() if fallback else ""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1].strip()
+    return [value] if value else []
+
+
 def parse_verdict(text: str) -> list[str]:
     match = re.search(r"Verdict:\s*(true|false)", text, re.IGNORECASE)
     if match:
@@ -154,6 +167,31 @@ def score_predictions(
         precision=precision,
         recall=recall,
         f1=f1,
+        predictions=tuple(unique_predictions),
+        gold_hits=gold_hits,
+        wrong_hits=wrong_hits,
+    )
+
+
+def score_qacc_predictions(
+    predictions: Sequence[str],
+    gold: Sequence[str],
+    wrong: Sequence[str] = (),
+) -> Score:
+    """Score one QACC answer against any accepted AmbigQA reference alias."""
+    unique_predictions = _deduplicate(predictions)
+    gold_values = _deduplicate(gold)
+    wrong_values = _deduplicate(wrong)
+    gold_hits = tuple(present_qacc(answer, unique_predictions) for answer in gold_values)
+    wrong_hits = tuple(present_qacc(answer, unique_predictions) for answer in wrong_values)
+    matched = bool(gold_values) and any(gold_hits)
+    exact = len(unique_predictions) == 1 and matched and not any(wrong_hits)
+    value = float(exact)
+    return Score(
+        exact=exact,
+        precision=value,
+        recall=value,
+        f1=value,
         predictions=tuple(unique_predictions),
         gold_hits=gold_hits,
         wrong_hits=wrong_hits,

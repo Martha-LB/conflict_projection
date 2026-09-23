@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -12,6 +12,9 @@ import numpy as np
 from .methods import Method
 from .schemas import Instance, RankedUnit
 from .scoring import Matcher, Parser, Score, parse_answers, present_strict, score_predictions
+
+
+Scorer = Callable[[Sequence[str], Sequence[str], Sequence[str]], Score]
 
 
 @dataclass(frozen=True)
@@ -83,6 +86,7 @@ def run_evaluation(
     n: int | None = None,
     parser: Parser = parse_answers,
     matcher: Matcher = present_strict,
+    scorer: Scorer | None = None,
     output_path: Path | None = None,
     progress_every: int = 10,
 ) -> EvaluationResult:
@@ -98,8 +102,12 @@ def run_evaluation(
     for index, instance in enumerate(selected, start=1):
         output = method(instance)
         predictions = parser(output.text)
-        score = score_predictions(
-            predictions, instance.gold_answers, instance.wrong_answers, matcher=matcher
+        score = (
+            scorer(predictions, instance.gold_answers, instance.wrong_answers)
+            if scorer is not None
+            else score_predictions(
+                predictions, instance.gold_answers, instance.wrong_answers, matcher=matcher
+            )
         )
         item = ItemResult(
             instance_id=instance.instance_id or f"position-{index - 1}",
